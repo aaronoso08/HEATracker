@@ -563,14 +563,82 @@ const SEED = [
   {name:'Ryan Vesalpour',hea_date:'2026-05-14',address:'9235 SW Washington St, Portland, OR 97225',phone:'(503) 380-5253',email:'rymarley@gmail.com',contractor:"TCS Insulation (Joaquin)",status:'Ineligible',measure:'Insulation',utility:'PGE, NW Natural',home_type:'Single Family Detached',date_300cpf:'',date_320cpf:'',urgent:false,notes:'Ineligible for CPF',checks:{}},
 ];
 
-function loadData(){
-  const s = localStorage.getItem('cpf_tracker_v3');
-  if(s){ try{ cases=JSON.parse(s); return; }catch(e){} }
-  cases = SEED.map((c,i)=>({...c,id:Date.now()+i}));
-  saveData();
+
+const SUPABASE_URL = "https://jafjjiyltnckpcydgwsp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_8CZB1oV7KbTM01CcWB2ZwA_glbW7j9n";
+const API = `${SUPABASE_URL}/rest/v1/cpf_cases`;
+const HDRS = {
+  "Content-Type":"application/json",
+  "apikey":SUPABASE_KEY,
+  "Authorization":`Bearer ${SUPABASE_KEY}`
+};
+
+async function dbLoad(){
+  showLoading(true);
+  try {
+    const r = await fetch(API+"?order=created_at.asc&select=*",{headers:HDRS});
+    if(!r.ok) throw new Error(await r.text());
+    const rows = await r.json();
+    cases = rows.map(fromDb);
+    renderStats(); renderTable(); populateContractorFilter();
+  } catch(e){ showToast("Load failed: "+e.message,"error"); }
+  showLoading(false);
 }
-function saveData(){ localStorage.setItem('cpf_tracker_v3',JSON.stringify(cases)); }
+
+async function dbInsert(c){
+  const r = await fetch(API,{method:"POST",headers:{...HDRS,"Prefer":"return=representation"},body:JSON.stringify(toDb(c))});
+  if(!r.ok){ showToast("Save failed","error"); return null; }
+  return (await r.json())[0];
+}
+
+async function dbUpdate(id,c){
+  const r = await fetch(`${API}?id=eq.${id}`,{method:"PATCH",headers:{...HDRS,"Prefer":"return=representation"},body:JSON.stringify(toDb(c))});
+  if(!r.ok){ showToast("Update failed","error"); return null; }
+  return (await r.json())[0];
+}
+
+async function dbDelete(id){
+  const r = await fetch(`${API}?id=eq.${id}`,{method:"DELETE",headers:HDRS});
+  if(!r.ok){ showToast("Delete failed","error"); return false; }
+  return true;
+}
+
+async function dbBulkInsert(rows){
+  const r = await fetch(API,{method:"POST",headers:{...HDRS,"Prefer":"return=representation"},body:JSON.stringify(rows.map(toDb))});
+  if(!r.ok){ showToast("Bulk insert failed","error"); return []; }
+  return r.json();
+}
+
+function toDb(c){
+  return {
+    name:c.name, address:c.address||null, phone:c.phone||null, email:c.email||null,
+    hea_date:c.hea_date||null, contractor:c.contractor||null, utility:c.utility||null,
+    home_type:c.home_type||null, measure:c.measure||null, status:c.status||"HEA Done",
+    date_300cpf:c.date_300cpf||null, date_320cpf:c.date_320cpf||null,
+    urgent:!!c.urgent, notes:c.notes||null, checks:c.checks||{}
+  };
+}
+
+function fromDb(r){
+  return {
+    ...r,
+    hea_date:r.hea_date||"",
+    date_300cpf:r.date_300cpf||"",
+    date_320cpf:r.date_320cpf||"",
+    checks:r.checks||{}
+  };
+}
+
+function showLoading(on){
+  let el = document.getElementById('loadingBar');
+  if(!el){ el=document.createElement('div'); el.id='loadingBar';
+    el.style.cssText='position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);z-index:9999;transition:opacity .3s';
+    document.body.appendChild(el); }
+  el.style.opacity = on?'1':'0';
+}
+
 function genId(){ return Date.now()+Math.random(); }
+
 
 // ==================== RENDER ====================
 const STATUS_CLASS = {
@@ -778,7 +846,7 @@ function openEditModal(id){
 
 function updateStatusHint(){} // could auto-advance checklist in future
 
-function saveCase(){
+async function saveCase(){
   const name=document.getElementById('f_name').value.trim();
   if(!name){showToast('Client name is required','error');return;}
   const data={
@@ -797,24 +865,33 @@ function saveCase(){
     urgent:document.getElementById('f_urgent').checked,
     checks:{...tempChecks},
   };
+  closeModal('caseModal');
   if(editingId){
-    const idx=cases.findIndex(c=>c.id===editingId);
-    if(idx>-1) cases[idx]={...cases[idx],...data};
+    const updated = await dbUpdate(editingId, data);
+    if(updated){
+      const idx=cases.findIndex(c=>String(c.id)===String(editingId));
+      if(idx>-1) cases[idx]={...cases[idx],...fromDb(updated)};
+      showToast('Case updated ✓');
+    }
   } else {
-    cases.push({id:genId(),...data});
+    const inserted = await dbInsert(data);
+    if(inserted){
+      cases.push(fromDb(inserted));
+      showToast('Case added ✓');
+    }
   }
-  saveData(); closeModal('caseModal');
-  renderStats(); renderTable();
-  populateContractorFilter();
-  showToast(editingId?'Case updated':'Case added ✓');
+  renderStats(); renderTable(); populateContractorFilter();
 }
 
-function deleteCase(){
+async function deleteCase(){
   if(!editingId||!confirm('Delete this case? Cannot be undone.')) return;
-  cases=cases.filter(c=>c.id!==editingId);
-  saveData(); closeModal('caseModal');
-  renderStats(); renderTable();
-  showToast('Case deleted');
+  closeModal('caseModal');
+  const ok = await dbDelete(editingId);
+  if(ok){
+    cases=cases.filter(c=>String(c.id)!==String(editingId));
+    renderStats(); renderTable();
+    showToast('Case deleted');
+  }
 }
 
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
@@ -908,16 +985,16 @@ function buildImportPreview(rows){
   }).join('')+(rows.length>8?`<div style="font-size:.72rem;color:var(--text3);padding:6px 12px">...and ${rows.length-8} more</div>`:'');
 }
 
-function doImport(){
+async function doImport(){
   const skipDupes=document.getElementById('skipDupes').checked;
   const existingNames=new Set(cases.map(c=>c.name.toLowerCase().trim()));
-  let added=0,skipped=0;
+  const toInsert=[];
+  let skipped=0;
   importRows.forEach(r=>{
     const name=(r[colMap.name]||'').trim();
     if(!name){skipped++;return;}
     if(skipDupes&&existingNames.has(name.toLowerCase())){skipped++;return;}
-    cases.push({
-      id:genId(),
+    toInsert.push({
       name,
       address:(r[colMap.address]||'').trim(),
       phone:(r[colMap.phone]||'').trim(),
@@ -929,15 +1006,21 @@ function doImport(){
       measure:(r[colMap.measure]||'').trim(),
       status:(r[colMap.status]||'HEA Done').trim()||'HEA Done',
       notes:(r[colMap.notes]||'').trim(),
-      date_300cpf:'',date_320cpf:'',urgent:false,checks:{},
+      date_300cpf:null,date_320cpf:null,urgent:false,checks:{},
     });
     existingNames.add(name.toLowerCase());
-    added++;
   });
-  saveData();
   closeModal('importModal');
-  renderStats(); renderTable(); populateContractorFilter();
-  showToast(`Imported ${added} cases${skipped?' ('+skipped+' skipped)':''}  ✓`);
+  if(toInsert.length){
+    const inserted = await dbBulkInsert(toInsert);
+    if(inserted&&inserted.length){
+      inserted.forEach(r=>cases.push(fromDb(r)));
+      renderStats(); renderTable(); populateContractorFilter();
+      showToast(`Imported ${inserted.length} cases${skipped?' ('+skipped+' skipped)':''} ✓`);
+    }
+  } else {
+    showToast(skipped+' rows skipped (all duplicates or empty)');
+  }
   document.getElementById('fileInput').value='';
   document.getElementById('colMapper').style.display='none';
   document.getElementById('importBtn').style.display='none';
@@ -983,10 +1066,8 @@ function showToast(msg,type=''){
 }
 
 // ==================== INIT ====================
-loadData();
-populateContractorFilter();
-renderStats();
-renderTable();
+// Load from Supabase on start
+dbLoad();
 </script>
 </body>
 </html>
