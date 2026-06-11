@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEA Case Tracker | LatinoBuilt</title>
+<style>
+  :root {
+    --green: #1a6e3c;
+    --green-light: #e8f5ee;
+    --orange: #c85a00;
+    --orange-light: #fff3e8;
+    --gray: #4a4a4a;
+    --gray-light: #f5f5f5;
+    --red: #b91c1c;
+    --red-light: #fef2f2;
+    --blue: #1e40af;
+    --blue-light: #eff6ff;
+    --yellow: #92400e;
+    --yellow-light: #fffbeb;
+    --border: #e0e0e0;
+    --white: #ffffff;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: #f0f2f5;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--green);
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.02em; }
+  .header-sub { font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
+  .header-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px;
+    overflow-x: auto;
+    background: white;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-card {
+    min-width: 110px;
+    background: var(--gray-light);
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .stat-card .num { font-size: 1.5rem; font-weight: 800; }
+  .stat-card .lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); margin-top: 2px; }
+  .stat-card.orange .num { color: var(--orange); }
+  .stat-card.green .num { color: var(--green); }
+  .stat-card.blue .num { color: var(--blue); }
+  .stat-card.red .num { color: var(--red); }
+
+  /* CONTROLS */
+  .controls {
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: white;
+    border-bottom: 1px solid var(--border);
+  }
+  .controls input, .controls select {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 11px;
+    font-size: 0.85rem;
+    font-family: var(--font);
+    background: white;
+    color: #1a1a1a;
+  }
+  .controls input { min-width: 200px; }
+  .controls select { cursor: pointer; }
+
+  /* STATUS BADGES */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .badge.hea-done { background: var(--blue-light); color: var(--blue); }
+  .badge.submitted-300 { background: var(--orange-light); color: var(--orange); }
+  .badge.awaiting-install { background: var(--yellow-light); color: var(--yellow); }
+  .badge.install-done { background: #f0fdf4; color: #166534; }
+  .badge.closed { background: var(--green-light); color: var(--green); }
+  .badge.ineligible { background: #fef2f2; color: #7f1d1d; }
+  .badge.needs-review { background: #fdf4ff; color: #7e22ce; }
+
+  /* TABLE */
+  .table-wrap {
+    padding: 16px 20px;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    font-size: 0.83rem;
+  }
+  thead {
+    background: var(--green);
+    color: white;
+  }
+  thead th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { background: #155c33; }
+  thead th.sorted { background: #0f4a28; }
+
+  tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: #f8fbf9; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td {
+    padding: 9px 12px;
+    vertical-align: middle;
+  }
+  .client-name { font-weight: 600; color: #1a1a1a; }
+  .address { color: var(--gray); font-size: 0.78rem; }
+  .contractor-tag {
+    display: inline-block;
+    background: var(--gray-light);
+    color: var(--gray);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+  }
+  .notes-cell { max-width: 200px; color: var(--gray); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .date-cell { white-space: nowrap; color: var(--gray); font-size: 0.78rem; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 580px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  }
+  .modal-header {
+    background: var(--green);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .modal-header h2 { font-size: 1rem; font-weight: 700; }
+  .modal-close { background: none; border: none; color: white; font-size: 1.3rem; cursor: pointer; padding: 0; line-height: 1; }
+  .modal-body { padding: 20px; }
+  .modal-body label { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); margin-bottom: 4px; margin-top: 14px; font-weight: 600; }
+  .modal-body label:first-child { margin-top: 0; }
+  .modal-body input, .modal-body select, .modal-body textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 11px;
+    font-size: 0.85rem;
+    font-family: var(--font);
+    color: #1a1a1a;
+    background: white;
+  }
+  .modal-body textarea { resize: vertical; min-height: 70px; }
+  .modal-body .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* BUTTONS */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: var(--font);
+    transition: opacity 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-outline { background: white; color: var(--green); border: 1.5px solid var(--green); }
+  .btn-red { background: var(--red); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 48px 20px; color: var(--gray); }
+  .empty .icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+  /* EXPORT / IMPORT */
+  .import-area { display: none; }
+
+  /* PRIORITY FLAGS */
+  .flag-urgent { border-left: 4px solid var(--red); }
+  .flag-normal { border-left: 4px solid transparent; }
+
+  @media (max-width: 600px) {
+    .stats-bar { gap: 8px; padding: 10px 12px; }
+    .stat-card { min-width: 90px; padding: 8px 10px; }
+    .stat-card .num { font-size: 1.2rem; }
+    .controls { padding: 10px 12px; }
+    .controls input { min-width: 140px; }
+    .table-wrap { padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1" style="font-size:1.05rem;font-weight:700;">HEA Case Tracker</div>
+    <div class="header-sub">LatinoBuilt | Aaron Osorio</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-outline" style="border-color:rgba(255,255,255,0.6);color:white;" onclick="openAddModal()">+ Add Case</button>
+    <button class="btn btn-outline" style="border-color:rgba(255,255,255,0.6);color:white;" onclick="exportCSV()">Export CSV</button>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar" id="statsBar"></div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="Search client, address, contractor..." oninput="renderTable()">
+  <select id="statusFilter" onchange="renderTable()">
+    <option value="">All Statuses</option>
+    <option value="HEA Done">HEA Done</option>
+    <option value="300CPF Submitted">300CPF Submitted</option>
+    <option value="Awaiting Install">Awaiting Install</option>
+    <option value="Install Done">Install Done</option>
+    <option value="Closed (320CPF)">Closed (320CPF)</option>
+    <option value="Ineligible">Ineligible</option>
+    <option value="Needs Review">Needs Review</option>
+  </select>
+  <select id="contractorFilter" onchange="renderTable()">
+    <option value="">All Contractors</option>
+  </select>
+  <select id="urgentFilter" onchange="renderTable()">
+    <option value="">All Priority</option>
+    <option value="urgent">Urgent Only</option>
+  </select>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table id="caseTable">
+    <thead>
+      <tr>
+        <th onclick="sortBy('hea_date')">HEA Date</th>
+        <th onclick="sortBy('name')">Client</th>
+        <th onclick="sortBy('address')">Address</th>
+        <th onclick="sortBy('contractor')">Contractor</th>
+        <th onclick="sortBy('status')">Status</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div id="emptyState" class="empty" style="display:none;">
+    <div class="icon">📋</div>
+    <div>No cases match your filters.</div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modal" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Case</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="row2">
+        <div>
+          <label>Client Name *</label>
+          <input type="text" id="f_name" placeholder="Full name">
+        </div>
+        <div>
+          <label>HEA Date</label>
+          <input type="date" id="f_hea_date">
+        </div>
+      </div>
+      <label>Address</label>
+      <input type="text" id="f_address" placeholder="Full address">
+      <div class="row2">
+        <div>
+          <label>Phone</label>
+          <input type="tel" id="f_phone" placeholder="(503) 000-0000">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" id="f_email" placeholder="client@email.com">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Contractor</label>
+          <select id="f_contractor">
+            <option value="">-- Select --</option>
+            <option>A's Heating & Cooling (Abraham)</option>
+            <option>A&S Insulation (Mario)</option>
+            <option>Olvera Heating & Cooling (Eliseo)</option>
+            <option>Dunamis Heating & Air (Miguel)</option>
+            <option>MPS Heating & Cooling (Mauro)</option>
+            <option>JARA / Reytan (Jose)</option>
+            <option>TCS Insulation (Joaquin)</option>
+            <option>Comfort Insulation (Ernesto)</option>
+            <option>Golden General (Annel)</option>
+            <option>Common Sense Heat Pump (Jesse)</option>
+            <option>Aaron Osorio (Solo)</option>
+          </select>
+        </div>
+        <div>
+          <label>Status *</label>
+          <select id="f_status">
+            <option value="HEA Done">HEA Done</option>
+            <option value="300CPF Submitted">300CPF Submitted</option>
+            <option value="Awaiting Install">Awaiting Install</option>
+            <option value="Install Done">Install Done</option>
+            <option value="Closed (320CPF)">Closed (320CPF)</option>
+            <option value="Ineligible">Ineligible</option>
+            <option value="Needs Review">Needs Review</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Utility</label>
+          <select id="f_utility">
+            <option value="">-- Select --</option>
+            <option>PGE</option>
+            <option>PGE, NW Natural</option>
+            <option>PAC</option>
+            <option>NW Natural</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label>Home Type</label>
+          <select id="f_home_type">
+            <option value="">-- Select --</option>
+            <option>Manufactured</option>
+            <option>Single Family Detached</option>
+            <option>Duplex/Multi</option>
+            <option>Townhome/Condo</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>300CPF Submission Date</label>
+          <input type="date" id="f_date_300cpf">
+        </div>
+        <div>
+          <label>320CPF Submission Date</label>
+          <input type="date" id="f_date_320cpf">
+        </div>
+      </div>
+      <div style="margin-top:14px; display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="f_urgent" style="width:auto;">
+        <label for="f_urgent" style="margin:0; text-transform:none; font-size:0.85rem; font-weight:600; color:#b91c1c; cursor:pointer;">Flag as Urgent</label>
+      </div>
+      <label>Notes</label>
+      <textarea id="f_notes" placeholder="Pending items, next steps, contractor status..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red btn-sm" id="deleteBtn" onclick="deleteCase()" style="margin-right:auto; display:none;">Delete</button>
+      <button class="btn btn-green" onclick="saveCase()">Save Case</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUS_CLASSES = {
+  'HEA Done': 'hea-done',
+  '300CPF Submitted': 'submitted-300',
+  'Awaiting Install': 'awaiting-install',
+  'Install Done': 'install-done',
+  'Closed (320CPF)': 'closed',
+  'Ineligible': 'ineligible',
+  'Needs Review': 'needs-review'
+};
+
+let cases = [];
+let editingId = null;
+let sortCol = 'hea_date';
+let sortDir = -1;
+
+// --- SEED DATA from payout list ---
+const seed = [
+  {name:'Eduardo Garcia',hea_date:'2026-04-02',address:'11923 SW Lausanne St, Wilsonville, OR',contractor:"MPS Heating & Cooling (Mauro)",status:'HEA Done',notes:'No eligible measures found',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Bernadette Grubbs',hea_date:'2026-04-02',address:'30380 SW Rebekah St Unit 23, Wilsonville, OR',contractor:"MPS Heating & Cooling (Mauro)",status:'HEA Done',notes:'NOT INTERESTED',utility:'PGE, NW Natural',home_type:'Townhome/Condo',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Layla Oakovich',hea_date:'2026-04-29',address:'5673 Old Highway 47, Gaston, OR 97119',contractor:"MPS Heating & Cooling (Mauro)",status:'HEA Done',notes:'',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Mirna Salazar',hea_date:'2026-04-29',address:'9588 SW Frewing Ct, Tigard, OR 97223',contractor:"MPS Heating & Cooling (Mauro)",status:'Awaiting Install',notes:'Insulation first, mini splits on pause. Coordinating with MPS to reschedule.',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Yeinis Valderrama',hea_date:'2026-04-29',address:'16980 SW Springwater Ln, Beaverton, OR 97006',contractor:"MPS Heating & Cooling (Mauro)",status:'HEA Done',notes:'Ductwork / ducted heat pump question',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Yolanda Cordero',hea_date:'2026-04-24',address:'20145 NE Sandy Blvd Unit 25, Fairview, OR 97024',contractor:"A's Heating & Cooling (Abraham)",status:'Closed (320CPF)',notes:'',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Esteban Avelar',hea_date:'2026-04-24',address:'5200 NE 92nd Ave Unit 25, Portland, OR 97220',contractor:"A's Heating & Cooling (Abraham)",status:'Closed (320CPF)',notes:'320CPF submitted 5/26',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:'2026-05-26'},
+  {name:'Silvia Chavez Pulido',hea_date:'2026-04-24',address:'1901 SE Minter Bridge Unit 75, Hillsboro, OR 97123',contractor:"A's Heating & Cooling (Abraham)",status:'Closed (320CPF)',notes:'320CPF submitted 5/27',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:'2026-05-27'},
+  {name:'Alejandra Diaz',hea_date:'2026-04-24',address:'13045 SE Stark #129, Portland, OR 97233',contractor:"A's Heating & Cooling (Abraham)",status:'Closed (320CPF)',notes:'',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Abigail Suarez',hea_date:'2026-04-23',address:'11545 McClellan Ln, Aumsville, OR',contractor:"A&S Insulation (Mario)",status:'300CPF Submitted',notes:'',utility:'PAC',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Jeanette Aguirre',hea_date:'2026-04-23',address:'5548 Waln Creek Ct S, Salem, OR',contractor:"A&S Insulation (Mario)",status:'300CPF Submitted',notes:'',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Pedro Rodriguez',hea_date:'2026-04-21',address:'16688 HWY 99E Unit 66, Woodburn, OR 97071',contractor:"Olvera Heating & Cooling (Eliseo)",status:'HEA Done',notes:'300CPF not yet submitted. Invoice pending.',utility:'PGE',home_type:'Manufactured',urgent:true,date_300cpf:'',date_320cpf:''},
+  {name:'Kimberly Cruz Sanchez',hea_date:'2026-04-22',address:'16688 HWY 99E #37, Woodburn, OR 97071',contractor:"Olvera Heating & Cooling (Eliseo)",status:'Awaiting Install',notes:'ECHP $13,000 no-cost, exception approved. Olvera contacted 6/1 to schedule.',utility:'PGE',home_type:'Manufactured',urgent:true,date_300cpf:'',date_320cpf:''},
+  {name:'Elizabeth Rodriguez',hea_date:'2026-04-22',address:'16688 OR-99E, Woodburn, OR 97071',contractor:"Olvera Heating & Cooling (Eliseo)",status:'300CPF Submitted',notes:'300CPF submitted 4/29. ECHP proposal from Olvera $13,000 (Job #1161) needs reissue. Floor insulation pending Mario/A&S.',utility:'PGE',home_type:'Manufactured',urgent:true,date_300cpf:'2026-04-29',date_320cpf:''},
+  {name:'Floriberta Cortes Bustos',hea_date:'2026-04-02',address:'1553 Aztec Dr, Woodburn, OR 97071',contractor:"Dunamis Heating & Air (Miguel)",status:'Closed (320CPF)',notes:'Under investigation - Eduardo charged $300 + asked for title',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Jerome Pugh',hea_date:'2026-05-07',address:'5489 Earth Pl NE, Salem, OR 97305',contractor:"JARA / Reytan (Jose)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Gabriela Martinez Lara',hea_date:'2026-05-07',address:'4480 MaCleay Rd SE, Salem, OR 97317',contractor:"JARA / Reytan (Jose)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Janai Rosiles Malagon',hea_date:'2026-05-05',address:'3034 Hazelgrove St NE, Salem, OR 97305',contractor:"Dunamis Heating & Air (Miguel)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Jose De Anda',hea_date:'2026-05-05',address:'3982 Pacific Circle, Hubbard, OR 97032',contractor:"Dunamis Heating & Air (Miguel)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Ryan Vesalpour',hea_date:'2026-05-14',address:'9235 SW Washington St, Portland, OR 97225',contractor:"TCS Insulation (Joaquin)",status:'Ineligible',notes:'Ineligible for CPF',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Diane LaVeglia',hea_date:'2026-05-15',address:'5075 SW Angel Ave, Beaverton, OR 97005',contractor:"TCS Insulation (Joaquin)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  // Aaron solo HEAs
+  {name:'Jose / Margarita Rojas',hea_date:'2026-05-08',address:'1424 E Park Ave NE, Salem, OR 97301',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Laura Alejandre',hea_date:'2026-05-07',address:'5126 Copper Creek Loop NE #73, Salem, OR 97305',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'300CPF not yet submitted',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Jennifer Walloch',hea_date:'2026-04-27',address:'1473 Center St NE, Salem, OR',contractor:"Aaron Osorio (Solo)",status:'Ineligible',notes:'Not eligible for CPF',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Elisa Veronica Vivian',hea_date:'2026-04-27',address:'10038 S New Era Rd Unit 15, Canby, OR 97013',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'Need remodelling/air leakage/insulation',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Julia Goin',hea_date:'2026-04-27',address:'5070 Newberg Dr N, Keizer, OR',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'NO FINDINGS',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Genevieve Orr',hea_date:'2026-04-27',address:'1920 Fir St S, Salem, OR',contractor:"Aaron Osorio (Solo)",status:'Ineligible',notes:'Standard incentives only, not CPF',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Guadalupe Casillas',hea_date:'2026-04-27',address:'4934 Arrowood Ct SE, Salem, OR 97317',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'No eligible measures',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Alondra Diaz',hea_date:'2026-06-06',address:'20680 NE Crestview Dr, Fairview, OR 97024',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'Minor with autism/asthma. AC not working. HEA processed.',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Karina Raya Figueroa',hea_date:'2026-06-04',address:'1011 NE 22nd St, Gresham, OR 97030',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'Insulation - A&S or Comfort',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Yadhira Lara',hea_date:'2026-06-05',address:'11823 NE Carl Rd Unit 29, Woodburn, OR 97071',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'HVAC + Insulation, Olvera',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Maria (Independence)',hea_date:'2026-06-08',address:'8415 Stapleton Rd, Independence, OR 97351',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'PAC - confirm with Danni',utility:'PAC',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Liliana Tapia',hea_date:'2026-04-27',address:'3434 Rudometkin Dr, Hubbard, OR 97032',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'No response',utility:'PGE',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Rocio McDermitt',hea_date:'2026-04-27',address:'4375 Snowberry St NE, Salem, OR 97305',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'Mold/humidity, disability income',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Julz Clementine',hea_date:'2026-06-06',address:'3853 NE 76th Ave, Portland, OR 97213',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'100+ yr old home',utility:'PGE, NW Natural',home_type:'Single Family Detached',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Ramon Hernandez',hea_date:'2026-06-04',address:'5151 Copper Creek Loop NE, Salem, OR 97305',contractor:"Aaron Osorio (Solo)",status:'HEA Done',notes:'High bill',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  // Additional known closed cases
+  {name:'German Ramirez',hea_date:'2025-12-01',address:'7958 SE Glencoe Rd #26, Milwaukie, OR 97222',contractor:"Olvera Heating & Cooling (Eliseo)",status:'Closed (320CPF)',notes:'320CPF submitted 6/2/2026. Panasonic 2:1 DHP. One-time exception approved.',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:'2026-06-02'},
+  {name:'Alfred Wallace',hea_date:'',address:'',contractor:'',status:'Closed (320CPF)',notes:'Confirmed closed 2026',utility:'',home_type:'',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Anthony Lo',hea_date:'',address:'',contractor:'',status:'Closed (320CPF)',notes:'Confirmed closed 2026',utility:'',home_type:'',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Alvaro Paniagua',hea_date:'',address:'16688 HWY 99E Unit #2, Woodburn, OR 97071',contractor:"Olvera Heating & Cooling (Eliseo)",status:'Closed (320CPF)',notes:'Confirmed closed 2026',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+  {name:'Elisabeth Izaguirre',hea_date:'',address:'5200 NE 92nd Ave Unit 23, Portland, OR 97220',contractor:"A's Heating & Cooling (Abraham)",status:'Closed (320CPF)',notes:'Confirmed closed 2026',utility:'PGE',home_type:'Manufactured',urgent:false,date_300cpf:'',date_320cpf:''},
+];
+
+function loadData() {
+  const stored = localStorage.getItem('hea_cases_v1');
+  if (stored) {
+    cases = JSON.parse(stored);
+  } else {
+    cases = seed.map((c, i) => ({ ...c, id: Date.now() + i }));
+    saveData();
+  }
+}
+
+function saveData() {
+  localStorage.setItem('hea_cases_v1', JSON.stringify(cases));
+}
+
+function genId() { return Date.now() + Math.random(); }
+
+// ---- RENDER ----
+function renderStats() {
+  const counts = {};
+  Object.keys(STATUS_CLASSES).forEach(k => counts[k] = 0);
+  cases.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
+  const urgent = cases.filter(c => c.urgent).length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card blue"><div class="num">${cases.length}</div><div class="lbl">Total Cases</div></div>
+    <div class="stat-card orange"><div class="num">${counts['HEA Done']}</div><div class="lbl">HEA Done</div></div>
+    <div class="stat-card orange"><div class="num">${counts['300CPF Submitted']}</div><div class="lbl">300CPF Sub</div></div>
+    <div class="stat-card orange"><div class="num">${counts['Awaiting Install']}</div><div class="lbl">Awaiting Install</div></div>
+    <div class="stat-card orange"><div class="num">${counts['Install Done']}</div><div class="lbl">Install Done</div></div>
+    <div class="stat-card green"><div class="num">${counts['Closed (320CPF)']}</div><div class="lbl">Closed</div></div>
+    <div class="stat-card red"><div class="num">${urgent}</div><div class="lbl">Urgent</div></div>
+  `;
+}
+
+function getFiltered() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const statusF = document.getElementById('statusFilter').value;
+  const contractorF = document.getElementById('contractorFilter').value;
+  const urgentF = document.getElementById('urgentFilter').value;
+
+  return cases.filter(c => {
+    if (search && !`${c.name} ${c.address} ${c.contractor} ${c.notes}`.toLowerCase().includes(search)) return false;
+    if (statusF && c.status !== statusF) return false;
+    if (contractorF && c.contractor !== contractorF) return false;
+    if (urgentF === 'urgent' && !c.urgent) return false;
+    return true;
+  });
+}
+
+let sortCol2 = 'hea_date';
+let sortDir2 = -1;
+
+function sortBy(col) {
+  if (sortCol2 === col) sortDir2 *= -1;
+  else { sortCol2 = col; sortDir2 = -1; }
+  renderTable();
+}
+
+function renderTable() {
+  let filtered = getFiltered();
+  filtered.sort((a, b) => {
+    let va = a[sortCol2] || '', vb = b[sortCol2] || '';
+    if (va < vb) return sortDir2;
+    if (va > vb) return -sortDir2;
+    return 0;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(c => {
+    const badge = STATUS_CLASSES[c.status] || 'needs-review';
+    const urgentClass = c.urgent ? 'flag-urgent' : 'flag-normal';
+    const dateStr = c.hea_date ? new Date(c.hea_date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '--';
+    return `
+    <tr class="${urgentClass}" onclick="openEditModal('${c.id}')">
+      <td class="date-cell">${dateStr}${c.urgent ? ' <span style="color:var(--red)">●</span>' : ''}</td>
+      <td><div class="client-name">${c.name}</div></td>
+      <td><div class="address">${c.address || '--'}</div></td>
+      <td><span class="contractor-tag">${c.contractor || '--'}</span></td>
+      <td><span class="badge ${badge}">${c.status}</span></td>
+      <td class="notes-cell" title="${(c.notes||'').replace(/"/g,'&quot;')}">${c.notes || '--'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openEditModal('${c.id}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function populateContractorFilter() {
+  const contractors = [...new Set(cases.map(c => c.contractor).filter(Boolean))].sort();
+  const sel = document.getElementById('contractorFilter');
+  contractors.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+// ---- MODAL ----
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add Case';
+  document.getElementById('deleteBtn').style.display = 'none';
+  ['f_name','f_address','f_phone','f_email','f_notes','f_date_300cpf','f_date_320cpf','f_hea_date'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_contractor').value = '';
+  document.getElementById('f_status').value = 'HEA Done';
+  document.getElementById('f_utility').value = '';
+  document.getElementById('f_home_type').value = '';
+  document.getElementById('f_urgent').checked = false;
+  document.getElementById('modal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const c = cases.find(x => String(x.id) === String(id));
+  if (!c) return;
+  editingId = c.id;
+  document.getElementById('modalTitle').textContent = 'Edit Case';
+  document.getElementById('deleteBtn').style.display = 'block';
+  document.getElementById('f_name').value = c.name || '';
+  document.getElementById('f_address').value = c.address || '';
+  document.getElementById('f_phone').value = c.phone || '';
+  document.getElementById('f_email').value = c.email || '';
+  document.getElementById('f_hea_date').value = c.hea_date || '';
+  document.getElementById('f_contractor').value = c.contractor || '';
+  document.getElementById('f_status').value = c.status || 'HEA Done';
+  document.getElementById('f_utility').value = c.utility || '';
+  document.getElementById('f_home_type').value = c.home_type || '';
+  document.getElementById('f_date_300cpf').value = c.date_300cpf || '';
+  document.getElementById('f_date_320cpf').value = c.date_320cpf || '';
+  document.getElementById('f_notes').value = c.notes || '';
+  document.getElementById('f_urgent').checked = !!c.urgent;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editingId = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+function saveCase() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('Client name is required.'); return; }
+
+  const data = {
+    name,
+    address: document.getElementById('f_address').value.trim(),
+    phone: document.getElementById('f_phone').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    hea_date: document.getElementById('f_hea_date').value,
+    contractor: document.getElementById('f_contractor').value,
+    status: document.getElementById('f_status').value,
+    utility: document.getElementById('f_utility').value,
+    home_type: document.getElementById('f_home_type').value,
+    date_300cpf: document.getElementById('f_date_300cpf').value,
+    date_320cpf: document.getElementById('f_date_320cpf').value,
+    notes: document.getElementById('f_notes').value.trim(),
+    urgent: document.getElementById('f_urgent').checked,
+  };
+
+  if (editingId) {
+    const idx = cases.findIndex(c => c.id === editingId);
+    if (idx > -1) cases[idx] = { ...cases[idx], ...data };
+  } else {
+    cases.push({ id: genId(), ...data });
+  }
+
+  saveData();
+  closeModal();
+  renderStats();
+  renderTable();
+}
+
+function deleteCase() {
+  if (!editingId) return;
+  if (!confirm('Delete this case? This cannot be undone.')) return;
+  cases = cases.filter(c => c.id !== editingId);
+  saveData();
+  closeModal();
+  renderStats();
+  renderTable();
+}
+
+function exportCSV() {
+  const cols = ['name','hea_date','address','contractor','status','utility','home_type','date_300cpf','date_320cpf','urgent','notes'];
+  const rows = [cols.join(',')];
+  cases.forEach(c => {
+    rows.push(cols.map(k => `"${(c[k]||'').toString().replace(/"/g,'""')}"`).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'HEA_Cases.csv'; a.click();
+}
+
+// --- INIT ---
+loadData();
+populateContractorFilter();
+renderStats();
+renderTable();
+</script>
+</body>
+</html>
