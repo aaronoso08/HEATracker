@@ -285,6 +285,21 @@ textarea.finput{resize:vertical;min-height:70px}
       <option>PAC</option>
       <option>NW Natural</option>
     </select>
+    <select class="fselect" id="monthFilter" onchange="renderTable()">
+      <option value="">All Months</option>
+      <option value="2026-01">Jan 2026</option>
+      <option value="2026-02">Feb 2026</option>
+      <option value="2026-03">Mar 2026</option>
+      <option value="2026-04">Apr 2026</option>
+      <option value="2026-05">May 2026</option>
+      <option value="2026-06">Jun 2026</option>
+      <option value="2026-07">Jul 2026</option>
+      <option value="2026-08">Aug 2026</option>
+      <option value="2026-09">Sep 2026</option>
+      <option value="2026-10">Oct 2026</option>
+      <option value="2026-11">Nov 2026</option>
+      <option value="2026-12">Dec 2026</option>
+    </select>
     <button class="btn btn-outline btn-sm" onclick="exportCSV()">↓ CSV</button>
   </div>
 </div>
@@ -386,7 +401,6 @@ textarea.finput{resize:vertical;min-height:70px}
           <div class="fg2">
             <div class="fg"><label class="flabel">Overall Status</label>
               <select class="finput" id="f_status" onchange="updateStatusHint()">
-                <option value="Intake">Intake</option>
                 <option value="HEA Done">HEA Done</option>
                 <option value="300CPF Submitted">300CPF Submitted</option>
                 <option value="Exception Pending">Exception Pending</option>
@@ -491,7 +505,7 @@ const PIPELINE_STAGES = [
 ];
 
 const STATUS_TO_STAGE = {
-  'Intake': 0, 'HEA Done': 1, '300CPF Submitted': 2,
+  'HEA Done': 1, '300CPF Submitted': 2,
   'Exception Pending': 3, 'Awaiting Install': 3,
   'Install Done': 4, '320CPF Submitted': 5, 'Closed': 6,
   'Ineligible': -1, 'On Hold': -1,
@@ -642,7 +656,7 @@ function genId(){ return Date.now()+Math.random(); }
 
 // ==================== RENDER ====================
 const STATUS_CLASS = {
-  'Intake':'b-intake','HEA Done':'b-hea','300CPF Submitted':'b-300',
+  'HEA Done':'b-hea','300CPF Submitted':'b-300',
   'Exception Pending':'b-exception','Awaiting Install':'b-awaiting',
   'Install Done':'b-install','320CPF Submitted':'b-320','Closed':'b-closed',
   'Ineligible':'b-ineligible','On Hold':'b-ineligible'
@@ -672,7 +686,9 @@ function getFiltered(){
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const cf = document.getElementById('contractorFilter').value;
   const uf = document.getElementById('utilityFilter').value;
+  const mf = document.getElementById('monthFilter').value;
   return cases.filter(c=>{
+    if(mf && (!c.hea_date || !c.hea_date.startsWith(mf))) return false;
     if(currentTab==='urgent' && !c.urgent) return false;
     if(currentTab==='closed' && c.status!=='Closed') return false;
     if(currentTab==='open' && (c.status==='Closed'||c.status==='Ineligible')) return false;
@@ -695,8 +711,7 @@ function renderStats(){
   const total=cases.length;
   document.getElementById('statsRow').innerHTML=`
     <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total Cases</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${counts['Intake']}</div><div class="stat-label"><span class="stat-dot" style="background:#7C3AED"></span>Intake</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--blue)">${counts['HEA Done']}</div><div class="stat-label"><span class="stat-dot" style="background:var(--blue)"></span>HEA Done</div></div>
+<div class="stat-card"><div class="stat-num" style="color:var(--blue)">${counts['HEA Done']}</div><div class="stat-label"><span class="stat-dot" style="background:var(--blue)"></span>HEA Done</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--yellow)">${counts['300CPF Submitted']+(counts['Awaiting Install']||0)}</div><div class="stat-label"><span class="stat-dot" style="background:var(--yellow)"></span>In Progress</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--green)">${counts['Closed']}</div><div class="stat-label"><span class="stat-dot" style="background:var(--green)"></span>Closed</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--red)">${urgent}</div><div class="stat-label"><span class="stat-dot" style="background:var(--red)"></span>Urgent</div></div>
